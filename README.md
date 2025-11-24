@@ -44,10 +44,12 @@ Ce dépôt contient tout le travail réalisé dans le cadre de l’examen pratiq
 
 ![Pipeline Jenkins](screenshots/jenkins_pipeline.png)
 
-**Logs Jenkins après push Docker :**
+
 
 ![Push Docker](screenshots/docker_push.png)
 
+
+![Slack Notification](screenshots/notif.png)
 ---
 
 ## Partie IV : Déploiement avec Terraform

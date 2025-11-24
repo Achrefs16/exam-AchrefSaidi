@@ -2,12 +2,13 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = 'dockerhub-credentials' // Your Docker Hub credential ID
+        DOCKERHUB_CREDENTIALS = 'dockerhub-credentials'
         IMAGE_NAME = "achrefs161/cv-onpage"
+        SLACK_WEBHOOK = credentials('slack-webhook-url')  // 🔔 Slack Webhook
     }
 
     triggers {
-        pollSCM('H/5 * * * *')  // Scrute GitHub toutes les 5 minutes
+        pollSCM('H/5 * * * *')
     }
 
     stages {
@@ -28,27 +29,23 @@ pipeline {
             }
         }
 
-      stage('Push to Docker Hub') {
-          steps {
-              echo '📤 Push vers Docker Hub...'
-              timeout(time: 30, unit: 'MINUTES') {
-                  script {
-                      docker.withRegistry('https://registry.hub.docker.com', DOCKERHUB_CREDENTIALS) {
-                          docker.image("${IMAGE_NAME}:${BUILD_NUMBER}").push()
-                          docker.image("${IMAGE_NAME}:latest").push()
-                      }
-                  }
-              }
-          }
-      }
+        stage('Push to Docker Hub') {
+            steps {
+                echo '📤 Push vers Docker Hub...'
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', DOCKERHUB_CREDENTIALS) {
+                        docker.image("${IMAGE_NAME}:${BUILD_NUMBER}").push()
+                        docker.image("${IMAGE_NAME}:latest").push()
+                    }
+                }
+            }
+        }
 
         stage('Clean Up') {
             steps {
                 echo '🧹 Nettoyage des images locales...'
-                script {
-                    sh "docker rmi ${IMAGE_NAME}:${BUILD_NUMBER} || true"
-                    sh "docker rmi ${IMAGE_NAME}:latest || true"
-                }
+                sh "docker rmi ${IMAGE_NAME}:${BUILD_NUMBER} || true"
+                sh "docker rmi ${IMAGE_NAME}:latest || true"
             }
         }
     }
@@ -59,10 +56,26 @@ pipeline {
             echo "✨ Image disponible sur Docker Hub:"
             echo "   docker pull ${IMAGE_NAME}:${BUILD_NUMBER}"
             echo "   docker pull ${IMAGE_NAME}:latest"
+
+            // 🔔 Slack notification success
+            sh """
+                curl -X POST -H 'Content-type: application/json' \
+                --data '{"text": "✅ *SUCCESS* – Build réussi pour `${IMAGE_NAME}` (#${BUILD_NUMBER})"}' \
+                $SLACK_WEBHOOK
+            """
         }
+
         failure {
             echo '❌ Le pipeline a échoué! Consultez les logs.'
+
+            // 🔔 Slack notification failure
+            sh """
+                curl -X POST -H 'Content-type: application/json' \
+                --data '{"text": "❌ *FAILURE* – Le pipeline `${IMAGE_NAME}` (#${BUILD_NUMBER}) a échoué !"}' \
+                $SLACK_WEBHOOK
+            """
         }
+
         always {
             echo '🔍 Build terminé - Nettoyage final'
         }
