@@ -1,0 +1,4 @@
+grafana/agent-linux-amd64.zip
+terraform-cv/.terraform/
+*.zip
+
